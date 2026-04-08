@@ -1,0 +1,5 @@
+src/App.tsx(1,28): error TS1484: 'ChangeEvent' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/App.tsx(1,41): error TS1484: 'DragEvent' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/App.tsx(187,51): error TS2353: Object literal may only specify known properties, and 'mt' does not exist in type 'string[] | TargetAndTransition'.
+src/App.tsx(188,56): error TS2353: Object literal may only specify known properties, and 'mt' does not exist in type 'string[] | TargetAndTransition | LegacyAnimationControls'.
+src/App.tsx(189,48): error TS2353: Object literal may only specify known properties, and 'mt' does not exist in type 'string[] | TargetAndTransition'.
