@@ -24,23 +24,18 @@ public final class TextPostProcessor {
     }
 
     public static String postProcess(String raw) {
-        if (raw == null) {
+        if (raw == null || raw.isBlank()) {
             return "";
         }
 
-        // 1) Chuẩn hóa Unicode tiếng Việt (NFC giúp dấu kết hợp ổn định hơn)
+        // 1) Chuẩn hóa Unicode tiếng Việt (NFC help diacritics be stable)
         String text = Normalizer.normalize(raw, Normalizer.Form.NFC);
 
         // 2) Loại bỏ ký tự điều khiển lạ / ký tự rác
-        text = CONTROL_CHARS.matcher(text).replaceAll("");
-        text = JUNK.matcher(text).replaceAll(" ");
+        // Chỉ giữ lại chữ, số, khoảng trắng và các dấu câu cơ bản
+        text = text.replaceAll("[^\\p{L}\\p{N}\\s.,:;!?()-/]", " ");
 
-        // 3) Sửa một số lỗi phổ biến
-        for (Map.Entry<String, String> e : COMMON_FIXES.entrySet()) {
-            text = text.replace(e.getKey(), e.getValue());
-        }
-
-        // 4) Normalize whitespace
+        // 3) Normalize whitespace
         text = text.replace('\u00A0', ' '); // NBSP
         text = MULTI_SPACE.matcher(text).replaceAll(" ");
         text = MULTI_NEWLINE.matcher(text).replaceAll("\n\n");

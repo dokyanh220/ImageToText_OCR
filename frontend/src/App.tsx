@@ -8,7 +8,6 @@ export default function App() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [text, setText] = useState<string>("");
-  const [ocrMode, setOcrMode] = useState<string>("FAST");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
@@ -69,7 +68,7 @@ export default function App() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await axios.post(`http://localhost:8080/api/ocr?mode=${ocrMode}`, formData);
+      const res = await axios.post(`http://localhost:8080/api/ocr`, formData);
       setText(res.data.text || "Không tìm thấy văn bản trong ảnh.");
     } catch (err) {
       console.error(err);
@@ -92,7 +91,7 @@ export default function App() {
       a.href = url;
       a.download = `ITT_${createdAt}.txt`;
       a.click();
-      
+
       // Cleanup
       window.URL.revokeObjectURL(url);
     } catch (err) {
@@ -111,7 +110,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans text-slate-800">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-4xl bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 flex flex-col md:flex-row"
@@ -123,13 +122,12 @@ export default function App() {
               <FileText className="text-violet-600 w-8 h-8" />
               Image<span className="text-violet-600">To</span>Text
             </h1>
-            <p className="text-slate-500 mt-2 text-sm">Chuyển đổi hình ảnh thành văn bản một cách dễ dàng và nhanh chóng.</p>
+            <p className="text-slate-500 mt-2 text-sm">Chuyển đổi hình ảnh thành văn bản một cách dễ dàng và nhanh chóng. (Hỗ trợ tốt nhất với hình ảnh văn bản trắng đen rõ ràng, ít họa tiết không phải ký tự văn bản)</p>
           </div>
 
           <div
-            className={`flex-1 min-h-[240px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-6 transition-all duration-200 cursor-pointer ${
-              file ? "border-violet-300 bg-violet-50/50" : "border-slate-200 hover:border-violet-400 hover:bg-slate-50"
-            }`}
+            className={`flex-1 min-h-[240px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-6 transition-all duration-200 cursor-pointer ${file ? "border-violet-300 bg-violet-50/50" : "border-slate-200 hover:border-violet-400 hover:bg-slate-50"
+              }`}
             onClick={() => fileInputRef.current?.click()}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -141,10 +139,10 @@ export default function App() {
               accept=".png, .jpg, .jpeg"
               onChange={handleFileChange}
             />
-            
+
             <AnimatePresence mode="wait">
               {preview ? (
-                <motion.div 
+                <motion.div
                   key="preview"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -160,7 +158,7 @@ export default function App() {
                   <p className="text-xs text-slate-400 mt-1">Nhấn để thay đổi ảnh khác</p>
                 </motion.div>
               ) : (
-                <motion.div 
+                <motion.div
                   key="upload"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -179,7 +177,7 @@ export default function App() {
 
           <AnimatePresence>
             {error && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0, marginTop: 0 }}
                 animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
                 exit={{ opacity: 0, height: 0, marginTop: 0 }}
@@ -193,36 +191,14 @@ export default function App() {
             )}
           </AnimatePresence>
 
-          <div className="mt-6 flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
-            <span className="text-sm font-medium text-slate-600 ml-1">Chế độ xử lý:</span>
-            <div className="flex bg-white p-1 rounded-lg shadow-sm border border-slate-200">
-              <button
-                onClick={() => setOcrMode("FAST")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                  ocrMode === "FAST" ? "bg-violet-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                Nhanh
-              </button>
-              <button
-                onClick={() => setOcrMode("ACCURATE")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                  ocrMode === "ACCURATE" ? "bg-violet-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                Chính xác
-              </button>
-            </div>
-          </div>
 
           <button
             onClick={handleOcr}
             disabled={!file || loading}
-            className={`mt-6 w-full py-4 rounded-xl font-medium text-white shadow-md transition-all flex items-center justify-center gap-2 ${
-              !file 
-                ? "bg-slate-300 cursor-not-allowed shadow-none" 
+            className={`mt-6 w-full py-4 rounded-xl font-medium text-white shadow-md transition-all flex items-center justify-center gap-2 ${!file
+                ? "bg-slate-300 cursor-not-allowed shadow-none"
                 : "bg-violet-600 hover:bg-violet-700 hover:shadow-lg active:scale-[0.98]"
-            }`}
+              }`}
           >
             {loading ? (
               <>
@@ -241,7 +217,7 @@ export default function App() {
         {/* Right Panel - Result Area */}
         <div className="w-full md:w-1/2 bg-slate-50 p-8 flex flex-col min-h-[400px]">
           {text ? (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               className="w-full h-full flex flex-col"
@@ -252,15 +228,15 @@ export default function App() {
                   Kết quả
                 </h3>
               </div>
-              
+
               <div className="relative flex-1 bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6 group flex flex-col min-h-[200px]">
                 <textarea
                   className="flex-1 w-full resize-none outline-none text-slate-600 custom-scrollbar bg-transparent pt-8"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                 />
-                
-                <button 
+
+                <button
                   onClick={handleCopy}
                   className="absolute top-3 right-3 p-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors flex items-center gap-2 shadow-sm border border-slate-100"
                   title="Sao chép văn bản"
@@ -290,7 +266,7 @@ export default function App() {
               </div>
             </motion.div>
           ) : (
-             <div className="flex flex-col items-center justify-center text-slate-400 h-full w-full py-12">
+            <div className="flex flex-col items-center justify-center text-slate-400 h-full w-full py-12">
               <div className="w-24 h-24 mb-6 rounded-full bg-slate-100 flex items-center justify-center shadow-inner">
                 <ImageIcon className="w-10 h-10 text-slate-300" />
               </div>

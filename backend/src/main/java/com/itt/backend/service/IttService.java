@@ -37,50 +37,45 @@ public class IttService {
             temp = File.createTempFile("ocr_", ext);
             file.transferTo(temp);
 
-            log.debug("OCR: mode={}, originalName={}, size={}", mode, originalName, file.getSize());
-            log.debug("OCR: before preprocess temp={}", temp.getAbsolutePath());
+            log.info("OCR Unified Pipeline: originalName={}", originalName);
 
-            // 1) Tiền xử lý ảnh (FAST: 1 ảnh, ACCURATE: có thể nhiều biến thể normal/inverted)
+            // 1) Tiền xử lý ảnh (Unified high-fidelity pipeline)
             processedVariants = imagePreprocessor.preprocess(temp, mode);
-            for (int i = 0; i < processedVariants.size(); i++) {
-                log.debug("OCR: after preprocess variant[{}]={}", i, processedVariants.get(i).getAbsolutePath());
-            }
 
-            // 2) OCR: FAST = 1 pass; ACCURATE = multi-pass (PSM 6 + PSM 4) và chọn kết quả tốt hơn
-            String bestRaw = null;
+            // 2) Multi-pass OCR: Thử nhiều PSM và chọn kết quả có điểm số cao nhất
+            String bestText = null;
             int bestScore = Integer.MIN_VALUE;
 
-            int[] psms = (mode == OcrMode.ACCURATE) ? new int[] { 6, 4 } : new int[] { 3 };
+            // Bộ PSM chiến lược: 1 (Auto+OSD), 3 (Fully Auto), 6 (Single Block), 11 (Sparse Text)
+            int[] psms = { 1, 3, 6, 11 };
 
-            for (int v = 0; v < processedVariants.size(); v++) {
-                File processed = processedVariants.get(v);
+            for (File processed : processedVariants) {
                 for (int psm : psms) {
-                    Tesseract tesseract = buildTesseract(psm);
-                    String raw = tesseract.doOCR(processed);
-                    String post = TextPostProcessor.postProcess(raw);
+                    try {
+                        Tesseract tesseract = buildTesseract(psm);
+                        String raw = tesseract.doOCR(processed);
+                        String post = TextPostProcessor.postProcess(raw);
 
-                    int score = scoreOcrText(post);
-                    log.debug("OCR: variant={}, psm={}, rawLen={}, postLen={}, score={}, preview={}",
-                            v, psm,
-                            raw == null ? 0 : raw.length(),
-                            post.length(),
-                            score,
-                            post.length() > 80 ? post.substring(0, 80) + "..." : post);
+                        int score = scoreOcrText(post);
+                        log.debug("OCR pass: psm={}, score={}, preview={}", 
+                            psm, score, post.length() > 50 ? post.substring(0, 50) + "..." : post);
 
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestRaw = post;
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestText = post;
+                        }
+                    } catch (Exception e) {
+                        log.warn("OCR pass failed for PSM {}", psm);
                     }
                 }
             }
 
-            return bestRaw == null ? "" : bestRaw;
+            return bestText == null ? "" : bestText;
 
         } catch (Exception e) {
-            log.error("OCR lỗi", e);
-            throw new RuntimeException("OCR lỗi: " + e.getMessage(), e);
+            log.error("OCR Hệ thống lỗi", e);
+            throw new RuntimeException("Lỗi xử lý OCR: " + e.getMessage(), e);
         } finally {
-            // Dọn dẹp file tạm
             if (temp != null && temp.exists()) temp.delete();
             if (processedVariants != null) {
                 for (File f : processedVariants) {
@@ -113,34 +108,33 @@ public class IttService {
     private int scoreOcrText(String text) {
         if (text == null || text.isBlank()) return -10_000;
 
-        int letters = 0;
-        int digits = 0;
-        int spaces = 0;
-        int diacritics = 0;
-        int weird = 0;
+        int vietnameseChars = 0;
+        int wordCount = text.split("\\s+").length;
+        int weirdSymbols = 0;
+        int upperCaseCount = 0;
 
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (Character.isLetter(c)) letters++;
-            else if (Character.isDigit(c)) digits++;
-            else if (Character.isWhitespace(c)) spaces++;
-            else if ("_`~^|".indexOf(c) >= 0) weird++;
-
-            // heuristic dấu tiếng Việt: các ký tự Latin mở rộng & combining marks
-            if (c >= 0x0300 && c <= 0x036F) diacritics++;
-            if (c >= 0x0100 && c <= 0x1EFF) diacritics++;
+            // Ký tự tiếng Việt có dấu (NFC)
+            if ((c >= 0x0100 && c <= 0x024F) || (c >= 0x1E00 && c <= 0x1EFF) || (c >= 0x0300 && c <= 0x036F)) {
+                vietnameseChars++;
+            }
+            // Ký tự lạ thường xuất hiện khi OCR lỗi
+            if ("~`@#$%^&*()_+=[]{}|\\<>".indexOf(c) >= 0) {
+                weirdSymbols++;
+            }
+            if (Character.isUpperCase(c)) {
+                upperCaseCount++;
+            }
         }
 
-        int len = text.length();
-        int compactLen = len - spaces;
-
-        // chiều dài quá ngắn thường là fail; quá dài có thể là noise nhưng vẫn có ích
-        int base = Math.min(compactLen, 1200);
-        int score = base + letters * 3 + digits - weird * 10 + diacritics * 2;
-
-        // phạt nếu nhiều ký tự không phải chữ/số
-        int nonAlnum = compactLen - letters - digits;
-        score -= Math.max(0, nonAlnum) * 2;
+        // Heuristic scoring: Ưu tiên tiếng Việt, trừ điểm rác
+        int score = (vietnameseChars * 4) + (wordCount * 2) - (weirdSymbols * 5);
+        
+        // Phạt nếu tỷ lệ chữ in hoa quá cao (thường là rác ở background)
+        if (text.length() > 20 && (double)upperCaseCount / text.length() > 0.8) {
+            score -= 50;
+        }
 
         return score;
     }
