@@ -14,10 +14,25 @@ public final class TextPostProcessor {
     private static final Map<String, String> COMMON_FIXES = new LinkedHashMap<>();
 
     static {
-        // Các lỗi OCR hay gặp với tiếng Việt (có thể mở rộng dần theo dữ liệu thực tế)
-        COMMON_FIXES.put("CONG", "CÔNG");
-        COMMON_FIXES.put(" HOA ", " HÒA ");
-        COMMON_FIXES.put("HOA", "HÒA");
+        // Các lỗi OCR hay gặp với tiếng Việt (tự động thêm dấu cho các từ cực kỳ phổ biến)
+        COMMON_FIXES.put("van ban", "văn bản");
+        COMMON_FIXES.put("de dang", "dễ dàng");
+        COMMON_FIXES.put("nhanh chong", "nhanh chóng");
+        COMMON_FIXES.put("Chuyen doi", "Chuyển đổi");
+        COMMON_FIXES.put("hinh anh", "hình ảnh");
+        COMMON_FIXES.put("nguoi", "người");
+        COMMON_FIXES.put("khong", "không");
+        COMMON_FIXES.put("duoc", "được");
+        COMMON_FIXES.put("tieng", "tiếng");
+        COMMON_FIXES.put("Viet", "Việt");
+        
+        // Khắc phục lỗi thiếu chữ 'i' trong 'đổi'
+        COMMON_FIXES.put("chuyển đổ ", "chuyển đổi ");
+        COMMON_FIXES.put("Chuyển đổ ", "Chuyển đổi ");
+        
+        // Sửa lỗi dấu hỏi/ngã hay sai
+        COMMON_FIXES.put(" hổ trợ", " hỗ trợ");
+        COMMON_FIXES.put(" sử dung", " sử dụng");
     }
 
     private TextPostProcessor() {
@@ -28,8 +43,14 @@ public final class TextPostProcessor {
             return "";
         }
 
+        String text = raw;
+        // Áp dụng các fix phổ biến TRƯỚC khi xử lý khác
+        for (Map.Entry<String, String> entry : COMMON_FIXES.entrySet()) {
+            text = text.replaceAll("(?i)" + Pattern.quote(entry.getKey()), entry.getValue());
+        }
+
         // 1) Chuẩn hóa Unicode tiếng Việt (NFC help diacritics be stable)
-        String text = Normalizer.normalize(raw, Normalizer.Form.NFC);
+        text = Normalizer.normalize(text, Normalizer.Form.NFC);
 
         // 2) Loại bỏ ký tự điều khiển lạ / ký tự rác
         // Chỉ giữ lại chữ, số, khoảng trắng và các dấu câu cơ bản

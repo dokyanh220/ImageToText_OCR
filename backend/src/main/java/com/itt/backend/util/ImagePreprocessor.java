@@ -71,25 +71,41 @@ public class ImagePreprocessor {
             // 5. Sharpening (Làm sắc nét để giữ dấu tiếng Việt)
             Mat sharpened = sharpen(denoised);
 
-            // 6. Thresholding (Adaptive Gaussian)
-            Mat binary = new Mat();
-            Imgproc.adaptiveThreshold(sharpened, binary, 255, 
+            // 6. Thresholding Pass 1: Adaptive Gaussian (Standard)
+            Mat binary1 = new Mat();
+            Imgproc.adaptiveThreshold(sharpened, binary1, 255, 
                 Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 21, 7);
+            
+            // 7. Thresholding Pass 2: Adaptive Mean (Sensitive to small details)
+            Mat binary2 = new Mat();
+            Imgproc.adaptiveThreshold(sharpened, binary2, 255, 
+                Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 25, 10);
 
-            // 7. Text Detection (Simple contours filter)
-            // Lọc bớt nhiễu bằng cách chỉ giữ các vùng có khả năng là chữ
-            Mat filtered = filterContourNoise(binary);
+            // 8. Thresholding Pass 3: Otsu (Clean backgrounds)
+            Mat binary3 = new Mat();
+            Imgproc.threshold(sharpened, binary3, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+            
+            // 9. Thresholding Pass 4: Dilation (Thicken thin marks)
+            Mat binary4 = binary1.clone();
+            Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(2, 2));
+            Imgproc.erode(binary4, binary4, kernel); // Erode because binary is black text on white background
+            kernel.release();
 
             List<File> outputs = new ArrayList<>();
-            outputs.add(writeTempLikeInput(input, filtered, "processed_unified_"));
+            outputs.add(writeTempLikeInput(input, filterContourNoise(binary1), "proc_std_"));
+            outputs.add(writeTempLikeInput(input, filterContourNoise(binary2), "proc_mean_"));
+            outputs.add(writeTempLikeInput(input, filterContourNoise(binary3), "proc_otsu_"));
+            outputs.add(writeTempLikeInput(input, binary4, "proc_thick_"));
 
             // Cleanup
             resized.release();
             gray.release();
             denoised.release();
             sharpened.release();
-            binary.release();
-            if (filtered != binary) filtered.release();
+            binary1.release();
+            binary2.release();
+            binary3.release();
+            binary4.release();
 
             return outputs;
         } finally {

@@ -1,4 +1,5 @@
 {
   "css.lint.unknownAtRules": "ignore",
-  "tailwindCSS.emmetCompletions": true
+  "tailwindCSS.emmetCompletions": true,
+  "java.debug.settings.onBuildFailureProceed": true
 }

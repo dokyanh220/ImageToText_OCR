@@ -20,7 +20,7 @@ public class IttController {
     public String ocr(@RequestParam("file") MultipartFile file) {
 
         if (!FileValidator.isValidImage(file)) {
-            throw new RuntimeException("Chỉ hỗ trợ PNG/JPG");
+            throw new RuntimeException("Chỉ hỗ trợ PNG/JPG/PDF");
         }
 
         return ittService.readText(file);
